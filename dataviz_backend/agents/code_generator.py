@@ -1,4 +1,4 @@
-import google.genai as genai
+import google.generativeai as genai
 import pandas as pd
 from io import StringIO
 import plotly.express as px
@@ -13,7 +13,8 @@ class CodeGeneratorAgent:
     """Agent 3 : Génère le code Plotly pour la visualisation choisie"""
     
     def __init__(self):
-        self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+        self.model = genai.GenerativeModel('gemini-flash-latest')
     
     async def generate_visualization(self, proposal: dict, csv_data: str) -> dict:
         """
@@ -44,10 +45,7 @@ Réponds avec un code Python exécutable, SANS ```python et SANS texte explicati
 Juste le code pur qui crée une variable 'fig'.
 """
         
-        response = self.client.models.generate_content(
-    model='gemini-1.5-pro',
-    contents=prompt
-)
+        response = self.model.generate_content(prompt)
         code = response.text.strip()
         
         # Nettoie le code (enlève markdown si présent)

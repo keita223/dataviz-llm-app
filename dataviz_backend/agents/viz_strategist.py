@@ -1,4 +1,4 @@
-import google.genai as genai
+import google.generativeai as genai
 import json
 import os
 from dotenv import load_dotenv
@@ -9,7 +9,8 @@ class VizStrategistAgent:
     """Agent 2 : Propose 3 visualisations pertinentes"""
     
     def __init__(self):
-        self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+        self.model = genai.GenerativeModel('gemini-flash-latest')
     
     async def propose_visualizations(self, data_summary: dict, problem: str) -> list:
         """
@@ -55,10 +56,7 @@ Réponds en JSON avec cette structure EXACTE :
 IMPORTANT : Réponds UNIQUEMENT avec le JSON, rien d'autre.
 """
         
-        response = self.client.models.generate_content(
-    model='gemini-1.5-pro',
-    contents=prompt
-)
+        response = self.model.generate_content(prompt)
         
         try:
             result = json.loads(response.text.strip())

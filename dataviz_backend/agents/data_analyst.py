@@ -1,5 +1,5 @@
 import pandas as pd
-import google.genai as genai
+import google.generativeai as genai
 from io import StringIO
 import json
 import os
@@ -11,7 +11,8 @@ class DataAnalystAgent:
     """Agent 1 : Analyse les données et comprend la problématique"""
     
     def __init__(self):
-        self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+        self.model = genai.GenerativeModel('gemini-flash-latest')
     
     async def analyze(self, csv_data: str, problem: str) -> dict:
         """
@@ -20,14 +21,15 @@ class DataAnalystAgent:
         # Parse CSV
         df = pd.read_csv(StringIO(csv_data))
         
-        # Statistiques de base
+        # Statistiques de base - SEULEMENT sur colonnes numériques
+        numeric_cols = df.select_dtypes(include='number')
         column_types = df.dtypes.astype(str).to_dict()
-        numeric_stats = df.describe().to_dict() if len(df.select_dtypes(include='number').columns) > 0 else {}
+        numeric_stats = numeric_cols.describe().to_dict() if len(numeric_cols.columns) > 0 else {}
         
-        # Corrélations (si colonnes numériques)
+        # Corrélations - SEULEMENT sur colonnes numériques
         correlations = None
-        if len(df.select_dtypes(include='number').columns) > 1:
-            correlations = df.corr().to_dict()
+        if len(numeric_cols.columns) > 1:
+            correlations = numeric_cols.corr().to_dict()
         
         # Contexte pour Gemini
         context = f"""
@@ -56,10 +58,7 @@ Fournis une analyse structurée en JSON avec cette structure exacte :
 Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.
 """
         
-        response = self.client.models.generate_content(
-    model='gemini-1.5-pro',
-    contents=prompt
-)
+        response = self.model.generate_content(prompt)
         
         try:
             # Parse la réponse JSON

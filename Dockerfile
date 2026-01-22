@@ -7,8 +7,6 @@ COPY pyproject.toml uv.lock ./
 RUN pip install --upgrade pip
 RUN pip install uv
 RUN uv sync --no-cache
-
-# 🔥 LIGNE CRUCIALE
 RUN pip install uvicorn
 
 COPY . .

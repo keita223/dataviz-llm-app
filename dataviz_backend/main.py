@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .orchestrator import MultiAgentOrchestrator
 from .models import GenerateVizRequest
 import io
+import traceback
 
 app = FastAPI(title="DataViz LLM API", version="1.0.0")
 
@@ -40,6 +41,9 @@ async def analyze_and_propose(
         return result
     
     except Exception as e:
+        print("=== ERREUR /api/analyze ===")
+        traceback.print_exc()
+        print("===========================")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/generate")
@@ -55,6 +59,9 @@ async def generate_visualization(request: GenerateVizRequest):
         return result
 
     except Exception as e:
+        print("=== ERREUR /api/generate ===")
+        traceback.print_exc()
+        print("============================")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")

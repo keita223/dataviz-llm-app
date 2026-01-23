@@ -17,39 +17,44 @@ class VizStrategistAgent:
         Génère 3 propositions de visualisations différentes
         """
         
-        prompt = f"""
-You are a visualization planner for a Plotly-based web app.
+        prompt = f"""Tu es un expert en data visualization. 
 
-Your job is to propose EXACTLY 3 visualizations.
+CONTEXTE :
+Problématique : {problem}
 
-STRICT RULES:
-- Allowed chart types: bar, scatter, line
-- Use ONLY column names from this list:
-{list(data_summary.get('column_types', {}).keys())}
-- Each visualization MUST have:
-  - title
-  - chart_type
-  - variables (1 or 2 columns only)
-- No justification
-- No best practices
-- No extra text
-- Output MUST be valid JSON
+Analyse des données :
+- Colonnes pertinentes : {data_summary.get('relevant_columns', [])}
+- Types de colonnes : {data_summary.get('column_types', {})}
+- Insights : {data_summary.get('insights', '')}
+- Approche recommandée : {data_summary.get('recommended_approach', '')}
 
-JSON FORMAT (STRICT):
+BONNES PRATIQUES À RESPECTER :
+- Choisir le type de graphique adapté (scatter pour corrélation, bar pour comparaison, box pour distribution, etc.)
+- Maximiser le data-ink ratio (pas de chartjunk)
+- Utiliser des couleurs appropriées et accessibles
+- Axes et légendes clairs
+- Titre explicite
+
+TÂCHE :
+Propose EXACTEMENT 3 visualisations DIFFÉRENTES qui répondent à la problématique.
+Chaque visualisation doit respecter les bonnes pratiques vues en cours.
+
+Réponds en JSON avec cette structure EXACTE :
 {{
-  "proposals": [
-    {{
-      "title": "string",
-      "chart_type": "bar|scatter|line",
-      "variables": ["column_x", "column_y"]
-    }}
-  ]
+    "proposals": [
+        {{
+            "title": "Titre explicite de la visualisation",
+            "chart_type": "scatter|bar|box|heatmap|line|histogram",
+            "variables": ["colonne_x", "colonne_y"],
+            "justification": "Pourquoi cette visualisation répond à la problématique",
+            "best_practices": "Comment elle respecte les bonnes pratiques (data-ink ratio, choix du type, etc.)"
+        }},
+        ... (2 autres propositions DIFFÉRENTES)
+    ]
 }}
 
-Problem:
-{problem}
+IMPORTANT : Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.
 """
-
         
         response = self.model.generate_content(prompt)
         

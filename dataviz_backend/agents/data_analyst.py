@@ -12,7 +12,7 @@ class DataAnalystAgent:
     
     def __init__(self):
         genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-        self.model = genai.GenerativeModel('gemini-flash-latest')
+        self.model = genai.GenerativeModel('gemini-1.5-flash')
     
     async def analyze(self, csv_data: str, problem: str) -> dict:
         """
@@ -61,8 +61,15 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.
         response = self.model.generate_content(prompt)
         
         try:
+            # Nettoie les backticks markdown si présents
+            text = response.text.strip()
+            if "```json" in text:
+                text = text.split("```json")[1].split("```")[0].strip()
+            elif "```" in text:
+                text = text.split("```")[1].split("```")[0].strip()
+            
             # Parse la réponse JSON
-            analysis = json.loads(response.text.strip())
+            analysis = json.loads(text)
         except json.JSONDecodeError:
             # Fallback si Gemini ne retourne pas du JSON pur
             analysis = {

@@ -14,7 +14,7 @@ class CodeGeneratorAgent:
 
     def __init__(self):
         genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-        self.model = genai.GenerativeModel("gemini-flash-latest")
+        self.model = genai.GenerativeModel("gemini-1.5-flash")
 
     async def generate_visualization(self, proposal: dict, csv_data: str) -> dict:
         """
@@ -28,8 +28,7 @@ class CodeGeneratorAgent:
         for col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="ignore")
 
-        prompt = f"""
-Tu es un expert Plotly.
+        prompt = f"""Tu es un expert Plotly. Génère du code Python pour créer cette visualisation.
 
 VISUALISATION DEMANDÉE :
 - Titre : {proposal['title']}
@@ -37,28 +36,34 @@ VISUALISATION DEMANDÉE :
 - Variables : {proposal['variables']}
 
 COLONNES DISPONIBLES : {list(df.columns)}
+TYPES DES COLONNES : {df.dtypes.to_dict()}
 PREMIÈRES LIGNES :
 {df.head().to_string()}
 
 CONSIGNES STRICTES :
-1. Utilise plotly.express ou plotly.graph_objects
+1. Utilise plotly.express (px) de préférence
 2. Le DataFrame s'appelle EXACTEMENT 'df'
 3. Le code DOIT créer une variable 'fig'
-4. Ne fais PAS de calculs inutiles
-5. Si price et sales existent, calcule revenue = price * sales
-6. Titre, axes et légendes propres
-7. Aucune impression texte
+4. Titre, axes et légendes bien formatés
+5. Couleurs professionnelles
+6. Si price et sales existent, tu peux calculer revenue = price * sales
 
-Réponds UNIQUEMENT avec du code Python exécutable.
+Réponds avec un code Python exécutable, SANS ```python et SANS texte explicatif.
+Juste le code pur qui crée la variable 'fig'.
 """
 
         response = self.model.generate_content(prompt)
         code = response.text.strip()
 
-        # Nettoyage du markdown si présent
-        if "```" in code:
-            code = code.split("```")[1].strip()
-
+        # Nettoyage amélioré du markdown
+        if "```python" in code:
+            code = code.split("```python")[1].split("```")[0].strip()
+        elif "```" in code:
+            # Enlève tous les backticks
+            parts = code.split("```")
+            # Prend la partie qui contient du code (généralement la 2ème partie)
+            code = parts[1].strip() if len(parts) > 1 else code
+        
         try:
             # Exécution sécurisée du code généré
             local_scope = {
@@ -81,25 +86,54 @@ Réponds UNIQUEMENT avec du code Python exécutable.
             }
 
         except Exception as e:
-            # 🔥 FALLBACK INTELLIGENT ET PROPRE
-            if "price" in df.columns and "sales" in df.columns:
-                df["revenue"] = df["price"] * df["sales"]
-                fig = px.bar(
-                    df,
-                    x="product" if "product" in df.columns else df.columns[0],
-                    y="revenue",
-                    title="Chiffre d'affaires par produit",
-                    labels={"revenue": "Revenue"}
-                )
-            else:
-                fig = px.bar(
-                    df,
-                    x=df.columns[0],
-                    y=df.columns[1] if len(df.columns) > 1 else df.columns[0],
-                    title=proposal["title"]
-                )
-
-            return {
-                "plotly_json": json.loads(fig.to_json()),
-                "code": f"# Fallback utilisé\n# Erreur : {str(e)}\n{code}"
-            }
+            # 🔥 FALLBACK INTELLIGENT basé sur le type de chart demandé
+            chart_type = proposal.get("chart_type", "bar")
+            variables = proposal.get("variables", [])
+            
+            # Identifie les colonnes numériques et catégorielles
+            numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+            categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
+            
+            try:
+                if chart_type == "scatter" and len(numeric_cols) >= 2:
+                    fig = px.scatter(df, x=numeric_cols[0], y=numeric_cols[1], title=proposal['title'])
+                
+                elif chart_type == "bar":
+                    if len(categorical_cols) >= 1 and len(numeric_cols) >= 1:
+                        fig = px.bar(df, x=categorical_cols[0], y=numeric_cols[0], title=proposal['title'])
+                    elif len(numeric_cols) >= 2:
+                        fig = px.bar(df, x=df.columns[0], y=numeric_cols[0], title=proposal['title'])
+                    else:
+                        fig = px.bar(df, x=df.columns[0], y=df.columns[1], title=proposal['title'])
+                
+                elif chart_type == "histogram" and len(numeric_cols) >= 1:
+                    fig = px.histogram(df, x=numeric_cols[0], title=proposal['title'])
+                
+                elif chart_type == "box":
+                    if len(categorical_cols) >= 1 and len(numeric_cols) >= 1:
+                        fig = px.box(df, x=categorical_cols[0], y=numeric_cols[0], title=proposal['title'])
+                    else:
+                        fig = px.box(df, y=numeric_cols[0] if numeric_cols else df.columns[0], title=proposal['title'])
+                
+                elif chart_type == "line" and len(numeric_cols) >= 2:
+                    fig = px.line(df, x=numeric_cols[0], y=numeric_cols[1], title=proposal['title'])
+                
+                else:
+                    # Fallback ultime : bar chart simple
+                    fig = px.bar(df, x=df.columns[0], y=df.columns[1] if len(df.columns) > 1 else df.columns[0], 
+                               title=proposal['title'])
+                
+                return {
+                    "plotly_json": json.loads(fig.to_json()),
+                    "code": f"# Fallback utilisé (erreur: {str(e)})\n{code}"
+                }
+            
+            except Exception as fallback_error:
+                # Fallback ultime si tout échoue
+                fig = px.bar(df, x=df.columns[0], y=df.columns[1] if len(df.columns) > 1 else df.columns[0],
+                           title="Visualisation générique")
+                
+                return {
+                    "plotly_json": json.loads(fig.to_json()),
+                    "code": f"# Double fallback\n# Erreur originale: {str(e)}\n# Erreur fallback: {str(fallback_error)}"
+                }

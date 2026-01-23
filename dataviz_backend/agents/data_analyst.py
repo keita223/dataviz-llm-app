@@ -1,109 +1,81 @@
-import json
 import pandas as pd
 import google.generativeai as genai
+from io import StringIO
+import json
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
 class DataAnalystAgent:
-    def __init__(self, model_name: str = "models/gemini-flash-latest"):
-        genai.configure(api_key=None)  # clé déjà gérée ailleurs si besoin
-        self.model = genai.GenerativeModel(model_name)
-
-    def analyze(self, df: pd.DataFrame, user_question: str) -> dict:
+    """Agent 1 : Analyse les données et comprend la problématique"""
+    
+    def __init__(self):
+        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+        self.model = genai.GenerativeModel('gemini-flash-latest')
+    
+    async def analyze(self, csv_data: str, problem: str) -> dict:
         """
-        Analyse le dataset et retourne :
-        - insights
-        - relevant_columns
-        - recommended_approach
+        Analyse le dataset et retourne un résumé structuré
         """
+        # Parse CSV
+        df = pd.read_csv(StringIO(csv_data))
+        
+        # Statistiques de base - SEULEMENT sur colonnes numériques
+        numeric_cols = df.select_dtypes(include='number')
+        column_types = df.dtypes.astype(str).to_dict()
+        numeric_stats = numeric_cols.describe().to_dict() if len(numeric_cols.columns) > 0 else {}
+        
+        # Corrélations - SEULEMENT sur colonnes numériques
+        correlations = None
+        if len(numeric_cols.columns) > 1:
+            correlations = numeric_cols.corr().to_dict()
+        
+        # Contexte pour Gemini
+        context = f"""
+Dataset Information:
+- Nombre de lignes : {len(df)}
+- Colonnes : {list(df.columns)}
+- Types : {column_types}
+- Premières lignes :
+{df.head(10).to_string()}
 
-        # -----------------------------
-        # 1️⃣ Préparer le prompt
-        # -----------------------------
-        prompt = f"""
-Tu es un data analyst expert.
-Analyse le dataset CSV suivant et réponds à la question utilisateur.
-
-QUESTION UTILISATEUR :
-{user_question}
-
-COLONNES DISPONIBLES :
-{list(df.columns)}
-
-TYPES DE DONNÉES :
-{df.dtypes.to_dict()}
-
-STATISTIQUES NUMÉRIQUES :
-{df.describe(include='number').to_dict()}
-
-CONTRAINTES IMPORTANTES :
-- Réponds UNIQUEMENT en JSON valide
-- Ne mets AUCUN texte hors JSON
-- Structure attendue EXACTE :
-
-{{
-  "insights": "texte synthétique",
-  "relevant_columns": ["col1", "col2"],
-  "recommended_approach": "description de l'approche analytique"
-}}
+Problématique utilisateur : {problem}
 """
+        
+        # Prompt pour Gemini
+        prompt = f"""Tu es un data analyst expert. Analyse ce dataset et cette problématique.
 
-        # -----------------------------
-        # 2️⃣ Appel Gemini
-        # -----------------------------
+{context}
+
+Fournis une analyse structurée en JSON avec cette structure exacte :
+{{
+    "insights": "Description des patterns clés, valeurs manquantes, distributions importantes",
+    "relevant_columns": ["colonne1", "colonne2"],
+    "recommended_approach": "Approche analytique recommandée pour répondre à la problématique"
+}}
+
+Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.
+"""
+        
         response = self.model.generate_content(prompt)
-
-        print("=== GEMINI RAW RESPONSE (DataAnalystAgent) ===")
-        print(response.text)
-        print("============================================")
-
-        # -----------------------------
-        # 3️⃣ Sécurisation de la réponse
-        # -----------------------------
-        text = response.text
-
-        if not text:
-            print("❌ Gemini returned empty response")
-            return self._fallback(df, "Réponse vide du modèle.")
-
-        text = text.strip()
-
-        # Nettoyage : garder uniquement le bloc JSON
-        if "{" in text and "}" in text:
-            text = text[text.find("{"): text.rfind("}") + 1]
-
-        # -----------------------------
-        # 4️⃣ Parsing JSON sécurisé
-        # -----------------------------
+        
         try:
-            analysis = json.loads(text)
-
-            # Validation minimale
-            if not isinstance(analysis, dict):
-                raise ValueError("JSON n'est pas un objet")
-
-            analysis.setdefault("insights", "")
-            analysis.setdefault("relevant_columns", list(df.columns))
-            analysis.setdefault("recommended_approach", "Analyse exploratoire")
-
-            print("✅ DataAnalystAgent parsing OK")
-            return analysis
-
-        except Exception as e:
-            print("❌ DataAnalystAgent JSON parsing error:", e)
-            print("RAW TEXT AFTER CLEANING:")
-            print(text)
-
-            return self._fallback(df, response.text)
-
-    # -----------------------------
-    # 5️⃣ Fallback sécurisé
-    # -----------------------------
-    def _fallback(self, df: pd.DataFrame, raw_text: str) -> dict:
+            # Parse la réponse JSON
+            analysis = json.loads(response.text.strip())
+        except json.JSONDecodeError:
+            # Fallback si Gemini ne retourne pas du JSON pur
+            analysis = {
+                "insights": response.text,
+                "relevant_columns": list(df.columns),
+                "recommended_approach": "Analyse exploratoire"
+            }
+        
         return {
-            "insights": raw_text[:1000] if raw_text else "Analyse non disponible.",
-            "relevant_columns": list(df.columns),
-            "recommended_approach": (
-                "Analyse exploratoire : agrégations, visualisations simples "
-                "et inspection des relations entre variables clés."
-            )
+            "column_types": column_types,
+            "numeric_stats": numeric_stats,
+            "correlations": correlations,
+            "insights": analysis.get("insights", ""),
+            "relevant_columns": analysis.get("relevant_columns", []),
+            "recommended_approach": analysis.get("recommended_approach", "")
         }

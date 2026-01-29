@@ -105,9 +105,9 @@ pytest tests/
 
 ##  Contributeurs
 
-- (https://github.com/keita223)
-- (https://github.com/Lindabenrajab)
--(https://github.com/skand652)
+- [Mamadi Keita](https://github.com/keita223)
+- [Linda Ben Rajab](https://github.com/Lindabenrajab)
+- [Skander Adam Afi](https://github.com/skan652)
 
 **Reviewer :** [Hadrien Mariaccia](https://github.com/brash6) - Enseignant
 
@@ -119,6 +119,3 @@ MIT License - voir le fichier [LICENSE](LICENSE)
 
 Projet réalisé dans le cadre du cours de Data Visualization - Master 2 BDIA
 Université Paris Dauphine - PSL
-
----
-

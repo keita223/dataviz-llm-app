@@ -1,15 +1,11 @@
 import anthropic
 import json
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 class VizStrategistAgent:
     """Agent 2 : Propose 3 visualisations pertinentes"""
 
     def __init__(self):
-        self.client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        self.client = anthropic.Anthropic()
         self.model = "claude-3-haiku-20240307"
 
     async def propose_visualizations(self, data_summary: dict, problem: str) -> list:

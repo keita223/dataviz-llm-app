@@ -2,16 +2,12 @@ import pandas as pd
 import anthropic
 from io import StringIO
 import json
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 class DataAnalystAgent:
     """Agent 1 : Analyse les données et comprend la problématique"""
 
     def __init__(self):
-        self.client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        self.client = anthropic.Anthropic()
         self.model = "claude-3-haiku-20240307"
 
     async def analyze(self, csv_data: str, problem: str) -> dict:

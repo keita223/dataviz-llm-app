@@ -7,6 +7,9 @@ from .models import GenerateVizRequest
 import io
 import traceback
 import os
+from dotenv import load_dotenv
+
+load_dotenv()  # Charge .env en local, ignoré sur Railway
 
 app = FastAPI(title="DataViz LLM API", version="1.0.0")
 

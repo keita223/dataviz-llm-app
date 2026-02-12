@@ -4,16 +4,12 @@ from io import StringIO
 import plotly.express as px
 import plotly.graph_objects as go
 import json
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 class CodeGeneratorAgent:
     """Agent 3 : Génère le code Plotly pour la visualisation choisie"""
 
     def __init__(self):
-        self.client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        self.client = anthropic.Anthropic()
         self.model = "claude-3-haiku-20240307"
 
     async def generate_visualization(self, proposal: dict, csv_data: str) -> dict:

@@ -16,7 +16,7 @@ networkx
 
 scikit-learn
 
-google-generativeai
+anthropic
 
 requests
 httpx

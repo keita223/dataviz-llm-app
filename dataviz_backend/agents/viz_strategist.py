@@ -1,4 +1,4 @@
-import google.generativeai as genai
+import anthropic
 import json
 import os
 from dotenv import load_dotenv
@@ -7,17 +7,17 @@ load_dotenv()
 
 class VizStrategistAgent:
     """Agent 2 : Propose 3 visualisations pertinentes"""
-    
+
     def __init__(self):
-        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-        self.model = genai.GenerativeModel('gemini-flash-latest')
-    
+        self.client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        self.model = "claude-3-haiku-20240307"
+
     async def propose_visualizations(self, data_summary: dict, problem: str) -> list:
         """
         Génère 3 propositions de visualisations différentes
         """
-        
-        prompt = f"""Tu es un expert en data visualization. 
+
+        prompt = f"""Tu es un expert en data visualization.
 
 CONTEXTE :
 Problématique : {problem}
@@ -55,11 +55,17 @@ Réponds en JSON avec cette structure EXACTE :
 
 IMPORTANT : Réponds UNIQUEMENT avec le JSON, rien d'autre.
 """
-        
-        response = self.model.generate_content(prompt)
-        
+
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        response_text = response.content[0].text
+
         try:
-            result = json.loads(response.text.strip())
+            result = json.loads(response_text.strip())
             return result.get("proposals", [])
         except json.JSONDecodeError:
             # Fallback : propositions par défaut

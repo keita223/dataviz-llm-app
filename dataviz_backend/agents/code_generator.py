@@ -1,4 +1,4 @@
-import google.generativeai as genai
+import anthropic
 import pandas as pd
 from io import StringIO
 import plotly.express as px
@@ -11,17 +11,17 @@ load_dotenv()
 
 class CodeGeneratorAgent:
     """Agent 3 : Génère le code Plotly pour la visualisation choisie"""
-    
+
     def __init__(self):
-        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-        self.model = genai.GenerativeModel('gemini-flash-latest')
-    
+        self.client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        self.model = "claude-3-haiku-20240307"
+
     async def generate_visualization(self, proposal: dict, csv_data: str) -> dict:
         """
         Génère le code Plotly et retourne le JSON du graphique
         """
         df = pd.read_csv(StringIO(csv_data))
-        
+
         prompt = f"""Tu es un expert Plotly. Génère du code Python pour créer cette visualisation.
 
 VISUALISATION DEMANDÉE :
@@ -43,25 +43,30 @@ CONSIGNES :
 Réponds avec un code Python exécutable, SANS ```python et SANS texte explicatif.
 Juste le code pur qui crée une variable 'fig'.
 """
-        
-        response = self.model.generate_content(prompt)
-        code = response.text.strip()
-        
+
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        code = response.content[0].text.strip()
+
         # Nettoie le code (enlève markdown si présent)
         if "```python" in code:
             code = code.split("```python")[1].split("```")[0].strip()
         elif "```" in code:
             code = code.split("```")[1].split("```")[0].strip()
-        
+
         # Exécute le code pour générer la figure
         try:
             local_scope = {"df": df, "px": px, "go": go, "pd": pd}
             exec(code, local_scope)
             fig = local_scope.get('fig')
-            
+
             if fig is None:
                 raise ValueError("Le code n'a pas créé de variable 'fig'")
-            
+
             return {
                 "plotly_json": json.loads(fig.to_json()),
                 "code": code

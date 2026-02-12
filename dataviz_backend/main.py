@@ -11,6 +11,15 @@ from dotenv import load_dotenv
 
 load_dotenv()  # Charge .env en local, ignoré sur Railway
 
+# Debug: vérifier si la clé API est disponible
+api_key = os.getenv("ANTHROPIC_API_KEY")
+print(f"=== STARTUP DEBUG ===")
+print(f"ANTHROPIC_API_KEY present: {api_key is not None}")
+print(f"ANTHROPIC_API_KEY length: {len(api_key) if api_key else 0}")
+print(f"All env vars with 'ANTHROPIC': {[k for k in os.environ if 'ANTHROPIC' in k.upper()]}")
+print(f"All env vars with 'API': {[k for k in os.environ if 'API' in k.upper()]}")
+print(f"=====================")
+
 app = FastAPI(title="DataViz LLM API", version="1.0.0")
 
 # CORS (important pour React)

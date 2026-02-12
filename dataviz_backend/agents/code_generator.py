@@ -18,7 +18,7 @@ class CodeGeneratorAgent:
         """
         df = pd.read_csv(StringIO(csv_data))
 
-        prompt = f"""Tu es un expert Plotly. Génère du code Python pour créer cette visualisation.
+        prompt = f"""Tu es un expert Plotly en data visualization. Génère du code Python pour créer cette visualisation.
 
 VISUALISATION DEMANDÉE :
 - Titre : {proposal['title']}
@@ -26,15 +26,25 @@ VISUALISATION DEMANDÉE :
 - Variables : {proposal['variables']}
 
 COLONNES DISPONIBLES : {list(df.columns)}
+TYPES DES COLONNES : {df.dtypes.astype(str).to_dict()}
+NOMBRE DE LIGNES : {len(df)}
 PREMIÈRES LIGNES :
-{df.head().to_string()}
+{df.head(10).to_string()}
 
-CONSIGNES :
+CONSIGNES STRICTES POUR UN GRAPHIQUE LISIBLE ET PROFESSIONNEL :
 1. Utilise plotly.express ou plotly.graph_objects
-2. Code propre et commenté
-3. Titre, axes, légendes bien formatés
-4. Couleurs professionnelles
-5. Le DataFrame s'appelle 'df'
+2. Le DataFrame s'appelle 'df'
+3. TITRE : clair, descriptif, taille 18px minimum
+4. AXES : labels explicites (pas les noms bruts des colonnes), taille 14px
+5. LÉGENDE : visible et bien positionnée
+6. COULEURS : utilise une palette professionnelle (ex: px.colors.qualitative.Set2 ou plotly_white)
+7. TEMPLATE : utilise template='plotly_white' pour un fond propre
+8. HOVER : ajoute des infos utiles au survol (hovertemplate personnalisé si pertinent)
+9. Si c'est un bar chart avec des catégories textuelles, trie les barres par valeur décroissante
+10. Si les labels des axes sont longs, incline-les (tickangle=-45)
+11. Ajoute des marges suffisantes : fig.update_layout(margin=dict(l=80, r=40, t=80, b=100))
+12. Pour les nombres, formate-les lisiblement (ex: séparateur de milliers)
+13. Si pertinent, ajoute des annotations ou des valeurs sur les barres (text_auto=True pour bar charts)
 
 Réponds avec un code Python exécutable, SANS ```python et SANS texte explicatif.
 Juste le code pur qui crée une variable 'fig'.

@@ -4,28 +4,17 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from .orchestrator import MultiAgentOrchestrator
 from .models import GenerateVizRequest
-import io
 import traceback
 import os
 from dotenv import load_dotenv
 
-load_dotenv()  # Charge .env en local, ignoré sur Railway
-
-# Debug: vérifier si la clé API est disponible
-api_key = os.getenv("ANTHROPIC_API_KEY")
-print(f"=== STARTUP DEBUG ===")
-print(f"ANTHROPIC_API_KEY present: {api_key is not None}")
-print(f"ANTHROPIC_API_KEY length: {len(api_key) if api_key else 0}")
-print(f"All env vars with 'ANTHROPIC': {[k for k in os.environ if 'ANTHROPIC' in k.upper()]}")
-print(f"All env vars with 'API': {[k for k in os.environ if 'API' in k.upper()]}")
-print(f"=====================")
+load_dotenv()
 
 app = FastAPI(title="DataViz LLM API", version="1.0.0")
 
-# CORS (important pour React)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En prod, spécifie ton domaine frontend
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,8 +22,8 @@ app.add_middleware(
 
 orchestrator = MultiAgentOrchestrator()
 
-# Servir les fichiers statiques (frontend)
-static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
+# Servir les fichiers statiques (frontend depuis dataviz_front/)
+static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dataviz_front")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 @app.get("/")

@@ -196,12 +196,18 @@ function renderVisualization(plotlyJson) {
 
     const layout = plotlyJson.layout || {};
     layout.autosize = true;
-    layout.margin = layout.margin || { l: 60, r: 30, t: 60, b: 60 };
+    layout.margin = layout.margin || { l: 80, r: 40, t: 80, b: 100 };
+    layout.font = layout.font || {};
+    layout.font.size = layout.font.size || 13;
+    layout.font.family = layout.font.family || 'Segoe UI, system-ui, sans-serif';
+    layout.template = layout.template || 'plotly_white';
+    layout.height = layout.height || 500;
 
     Plotly.newPlot(chartDiv, plotlyJson.data, layout, {
         responsive: true,
         displayModeBar: true,
-        displaylogo: false
+        displaylogo: false,
+        modeBarButtonsToRemove: ['lasso2d', 'select2d']
     });
 }
 

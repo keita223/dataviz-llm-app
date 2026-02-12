@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataViz LLM - Visualisation intelligente</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>DataViz LLM</h1>
+        <p class="subtitle">Visualisation de donnees assistee par IA</p>
+    </header>
+
+    <!-- Stepper -->
+    <div class="stepper">
+        <div class="step active" id="step-ind-1">
+            <div class="step-number">1</div>
+            <span>Upload</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" id="step-ind-2">
+            <div class="step-number">2</div>
+            <span>Propositions</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" id="step-ind-3">
+            <div class="step-number">3</div>
+            <span>Visualisation</span>
+        </div>
+    </div>
+
+    <main>
+        <!-- ETAPE 1 : Upload -->
+        <section id="step-1" class="section active">
+            <h2>Chargez vos donnees</h2>
+            <form id="upload-form">
+                <div class="form-group">
+                    <label for="csv-file">Fichier CSV</label>
+                    <div class="file-upload" id="drop-zone">
+                        <input type="file" id="csv-file" accept=".csv" required>
+                        <div class="file-upload-text">
+                            <span class="file-icon">&#128196;</span>
+                            <p>Glissez votre fichier CSV ici ou <strong>cliquez pour parcourir</strong></p>
+                        </div>
+                        <div class="file-name" id="file-name"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="problem">Votre problematique</label>
+                    <textarea id="problem" placeholder="Ex: Quel produit genere le plus de revenus ?" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" id="btn-analyze">
+                    <span class="btn-text">Analyser</span>
+                    <span class="btn-loading" style="display:none">
+                        <span class="spinner"></span> Analyse en cours...
+                    </span>
+                </button>
+            </form>
+        </section>
+
+        <!-- ETAPE 2 : Propositions -->
+        <section id="step-2" class="section">
+            <h2>Resultats de l'analyse</h2>
+
+            <div class="data-summary" id="data-summary">
+                <h3>Resume des donnees</h3>
+                <div class="insights" id="insights"></div>
+                <div class="columns-info" id="columns-info"></div>
+            </div>
+
+            <h3>Choisissez une visualisation</h3>
+            <div class="proposals-grid" id="proposals-grid"></div>
+
+            <button class="btn btn-secondary" id="btn-back-1">Retour</button>
+        </section>
+
+        <!-- ETAPE 3 : Visualisation -->
+        <section id="step-3" class="section">
+            <h2>Visualisation generee</h2>
+
+            <div class="viz-container">
+                <div id="plotly-chart"></div>
+            </div>
+
+            <details class="code-section">
+                <summary>Voir le code Python genere</summary>
+                <pre><code id="generated-code"></code></pre>
+            </details>
+
+            <div class="actions">
+                <button class="btn btn-secondary" id="btn-back-2">Retour aux propositions</button>
+                <button class="btn btn-primary" id="btn-restart">Nouvelle analyse</button>
+            </div>
+        </section>
+
+        <!-- Loading overlay -->
+        <div class="loading-overlay" id="loading-overlay">
+            <div class="loading-content">
+                <div class="spinner-large"></div>
+                <p id="loading-text">Analyse en cours...</p>
+            </div>
+        </div>
+
+        <!-- Error toast -->
+        <div class="toast" id="error-toast">
+            <span class="toast-icon">&#9888;</span>
+            <span id="error-message"></span>
+        </div>
+    </main>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

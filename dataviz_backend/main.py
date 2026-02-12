@@ -1,9 +1,12 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from .orchestrator import MultiAgentOrchestrator
 from .models import GenerateVizRequest
 import io
 import traceback
+import os
 
 app = FastAPI(title="DataViz LLM API", version="1.0.0")
 
@@ -18,9 +21,13 @@ app.add_middleware(
 
 orchestrator = MultiAgentOrchestrator()
 
+# Servir les fichiers statiques (frontend)
+static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
 @app.get("/")
 async def root():
-    return {"message": "DataViz LLM API is running", "version": "1.0.0"}
+    return FileResponse(os.path.join(static_dir, "index.html"))
 
 @app.post("/api/analyze")
 async def analyze_and_propose(

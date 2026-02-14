@@ -179,8 +179,15 @@ async function selectProposal(index, cardEl) {
         }
 
         const data = await res.json();
-        renderVisualization(data.image_base64);
-        renderCode(data.code);
+        console.log('API response keys:', Object.keys(data));
+
+        if (data.image_base64) {
+            renderVisualization(data.image_base64);
+        } else {
+            throw new Error('Aucune image generee par le serveur');
+        }
+
+        renderCode(data.code || '');
         goToStep(3);
     } catch (err) {
         showError(err.message);

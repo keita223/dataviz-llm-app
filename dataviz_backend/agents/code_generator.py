@@ -7,10 +7,13 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import base64
+import gc
 
 
 class CodeGeneratorAgent:
     """Agent 3 : Génère le code matplotlib via LLM et retourne l'image"""
+
+    MAX_ROWS_VIZ = 10000  # Echantillonner si plus de 10000 lignes
 
     def __init__(self):
         self.client = anthropic.Anthropic()
@@ -121,9 +124,9 @@ PAS de ```python, PAS de texte explicatif, PAS de markdown. Juste le code."""
         if not fig.get_axes():
             raise ValueError("Le code n'a créé aucun graphique")
 
-        # Sauvegarder en PNG base64
+        # Sauvegarder en PNG base64 (DPI 100 pour economiser la memoire)
         buf = BytesIO()
-        fig.savefig(buf, format='png', dpi=150, bbox_inches='tight', facecolor='white')
+        fig.savefig(buf, format='png', dpi=100, bbox_inches='tight', facecolor='white')
         buf.seek(0)
         img_base64 = base64.b64encode(buf.read()).decode('utf-8')
         buf.close()
@@ -138,6 +141,10 @@ PAS de ```python, PAS de texte explicatif, PAS de markdown. Juste le code."""
         """Génère la visualisation matplotlib via LLM avec retry"""
         df = pd.read_csv(StringIO(csv_data))
         df = self._clean_dataframe(df)
+
+        # Echantillonner si le dataset est trop gros (economie memoire)
+        if len(df) > self.MAX_ROWS_VIZ:
+            df = df.sample(self.MAX_ROWS_VIZ, random_state=42)
 
         max_retries = 3
         last_error = None
@@ -158,6 +165,8 @@ PAS de ```python, PAS de texte explicatif, PAS de markdown. Juste le code."""
 
             try:
                 img_base64 = self._execute_and_capture(code, df)
+                del df
+                gc.collect()
 
                 return {
                     "image_base64": img_base64,
@@ -172,6 +181,8 @@ PAS de ```python, PAS de texte explicatif, PAS de markdown. Juste le code."""
         # Toutes les tentatives ont échoué -> fallback déterministe
         plt.close('all')
         img_base64 = self._build_fallback(proposal, df)
+        del df
+        gc.collect()
 
         return {
             "image_base64": img_base64,
@@ -232,7 +243,7 @@ PAS de ```python, PAS de texte explicatif, PAS de markdown. Juste le code."""
         plt.tight_layout()
 
         buf = BytesIO()
-        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight', facecolor='white')
+        plt.savefig(buf, format='png', dpi=100, bbox_inches='tight', facecolor='white')
         buf.seek(0)
         img_base64 = base64.b64encode(buf.read()).decode('utf-8')
         buf.close()

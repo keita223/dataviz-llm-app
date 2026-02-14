@@ -48,6 +48,8 @@ async def root():
         headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
     )
 
+MAX_CSV_SIZE = 10 * 1024 * 1024  # 10 MB max
+
 @app.post("/api/analyze")
 async def analyze_and_propose(
     problem: str = Form(...),
@@ -57,15 +59,20 @@ async def analyze_and_propose(
     Endpoint 1 : Upload CSV + problématique → Retourne 3 propositions
     """
     try:
-        # Lire le CSV
+        # Lire le CSV avec limite de taille
         contents = await file.read()
+        if len(contents) > MAX_CSV_SIZE:
+            raise HTTPException(status_code=413, detail="Fichier trop volumineux (max 10 MB)")
         csv_data = contents.decode('utf-8')
-        
+        del contents  # Liberer la memoire
+
         # Orchestrer Agents 1 + 2
         result = await orchestrator.get_proposals(problem, csv_data)
-        
+
         return result
-    
+
+    except HTTPException:
+        raise
     except Exception as e:
         print("=== ERREUR /api/analyze ===")
         traceback.print_exc()

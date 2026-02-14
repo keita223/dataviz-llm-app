@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DataViz LLM - Visualisation intelligente</title>
-    <link rel="stylesheet" href="/static/style.css?v=3">
+    <link rel="stylesheet" href="/static/style.css?v=4">
 </head>
 <body>
     <header>
@@ -80,7 +80,7 @@
             <h2>Visualisation generee</h2>
 
             <div class="viz-container">
-                <div id="plotly-chart"></div>
+                <div id="viz-chart"></div>
             </div>
 
             <details class="code-section">
@@ -109,6 +109,237 @@
         </div>
     </main>
 
-    <script src="/static/app.js?v=3"></script>
+    <script>
+    // === DataViz LLM - App v4 (inline) ===
+
+    // State
+    let csvFile = null;
+    let csvData = null;
+    let proposals = [];
+    let dataSummary = null;
+
+    // DOM
+    const sections = {
+        1: document.getElementById('step-1'),
+        2: document.getElementById('step-2'),
+        3: document.getElementById('step-3')
+    };
+
+    const stepIndicators = {
+        1: document.getElementById('step-ind-1'),
+        2: document.getElementById('step-ind-2'),
+        3: document.getElementById('step-ind-3')
+    };
+
+    // Navigation
+    function goToStep(n) {
+        Object.values(sections).forEach(s => s.classList.remove('active'));
+        sections[n].classList.add('active');
+
+        Object.entries(stepIndicators).forEach(([key, el]) => {
+            el.classList.remove('active', 'done');
+            if (parseInt(key) < n) el.classList.add('done');
+            if (parseInt(key) === n) el.classList.add('active');
+        });
+    }
+
+    // Loading
+    function showLoading(text) {
+        document.getElementById('loading-text').textContent = text;
+        document.getElementById('loading-overlay').classList.add('active');
+    }
+
+    function hideLoading() {
+        document.getElementById('loading-overlay').classList.remove('active');
+    }
+
+    // Error
+    function showError(msg) {
+        const toast = document.getElementById('error-toast');
+        document.getElementById('error-message').textContent = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 5000);
+    }
+
+    // File upload
+    const fileInput = document.getElementById('csv-file');
+    const dropZone = document.getElementById('drop-zone');
+    const fileNameEl = document.getElementById('file-name');
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            csvFile = e.target.files[0];
+            fileNameEl.textContent = csvFile.name;
+        }
+    });
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) {
+            csvFile = e.dataTransfer.files[0];
+            fileInput.files = e.dataTransfer.files;
+            fileNameEl.textContent = csvFile.name;
+        }
+    });
+
+    // Form submit -> /api/analyze
+    document.getElementById('upload-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const problem = document.getElementById('problem').value.trim();
+        if (!csvFile || !problem) return;
+
+        // Read CSV content for later use
+        csvData = await csvFile.text();
+
+        const formData = new FormData();
+        formData.append('problem', problem);
+        formData.append('file', csvFile);
+
+        showLoading('Analyse des donnees en cours...');
+
+        try {
+            const res = await fetch('/api/analyze', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || 'Erreur serveur');
+            }
+
+            const data = await res.json();
+            dataSummary = data.data_summary;
+            proposals = data.proposals;
+
+            renderSummary(dataSummary);
+            renderProposals(proposals);
+            goToStep(2);
+        } catch (err) {
+            showError(err.message);
+        } finally {
+            hideLoading();
+        }
+    });
+
+    // Render data summary
+    function renderSummary(summary) {
+        document.getElementById('insights').textContent = summary.insights || 'Aucun insight disponible.';
+
+        const colsEl = document.getElementById('columns-info');
+        colsEl.innerHTML = '';
+        const cols = summary.relevant_columns || [];
+        cols.forEach(col => {
+            const tag = document.createElement('span');
+            tag.className = 'column-tag';
+            tag.textContent = col;
+            colsEl.appendChild(tag);
+        });
+    }
+
+    // Render proposals
+    function renderProposals(props) {
+        const grid = document.getElementById('proposals-grid');
+        grid.innerHTML = '';
+
+        props.forEach((p, i) => {
+            const card = document.createElement('div');
+            card.className = 'proposal-card';
+            card.innerHTML = '<span class="card-type">' + p.chart_type + '</span>' +
+                '<h4>' + p.title + '</h4>' +
+                '<div class="card-variables">Variables : ' + p.variables.join(', ') + '</div>' +
+                '<div class="card-justification">' + p.justification + '</div>';
+            card.addEventListener('click', () => selectProposal(i, card));
+            grid.appendChild(card);
+        });
+    }
+
+    // Select proposal -> /api/generate
+    async function selectProposal(index, cardEl) {
+        // Highlight
+        document.querySelectorAll('.proposal-card').forEach(c => c.classList.remove('selected'));
+        cardEl.classList.add('selected');
+
+        const proposal = proposals[index];
+
+        showLoading('Generation de la visualisation...');
+
+        try {
+            const res = await fetch('/api/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    proposal: proposal,
+                    csv_data: csvData
+                })
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || 'Erreur serveur');
+            }
+
+            const data = await res.json();
+            console.log('API response keys:', Object.keys(data));
+
+            if (data.image_base64) {
+                renderVisualization(data.image_base64);
+            } else {
+                throw new Error('Aucune image generee par le serveur');
+            }
+
+            renderCode(data.code || '');
+            goToStep(3);
+        } catch (err) {
+            showError(err.message);
+        } finally {
+            hideLoading();
+        }
+    }
+
+    // Render matplotlib image (base64 PNG)
+    function renderVisualization(imageBase64) {
+        const chartDiv = document.getElementById('viz-chart');
+        chartDiv.innerHTML = '';
+
+        const img = document.createElement('img');
+        img.src = 'data:image/png;base64,' + imageBase64;
+        img.alt = 'Visualisation generee';
+        img.style.width = '100%';
+        img.style.maxWidth = '900px';
+        img.style.display = 'block';
+        img.style.margin = '0 auto';
+        chartDiv.appendChild(img);
+    }
+
+    // Render code
+    function renderCode(code) {
+        document.getElementById('generated-code').textContent = code;
+    }
+
+    // Back buttons
+    document.getElementById('btn-back-1').addEventListener('click', () => goToStep(1));
+    document.getElementById('btn-back-2').addEventListener('click', () => goToStep(2));
+    document.getElementById('btn-restart').addEventListener('click', () => {
+        csvFile = null;
+        csvData = null;
+        proposals = [];
+        dataSummary = null;
+        document.getElementById('upload-form').reset();
+        fileNameEl.textContent = '';
+        goToStep(1);
+    });
+    </script>
 </body>
 </html>

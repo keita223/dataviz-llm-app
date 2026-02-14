@@ -29,13 +29,22 @@ class CodeGeneratorAgent:
         date_cols = df.select_dtypes(include=['datetime']).columns.tolist()
 
         # Détecter les colonnes date en format string
+        import warnings
         for col in categorical_cols[:]:
-            try:
-                pd.to_datetime(df[col].head())
-                date_cols.append(col)
-                categorical_cols.remove(col)
-            except (ValueError, TypeError):
-                pass
+            sample = df[col].dropna().head()
+            if sample.empty:
+                continue
+            # Vérifier si ça ressemble à une date (contient - ou /)
+            first_val = str(sample.iloc[0])
+            if any(sep in first_val for sep in ['-', '/']) and any(c.isdigit() for c in first_val):
+                try:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        pd.to_datetime(sample)
+                    date_cols.append(col)
+                    categorical_cols.remove(col)
+                except (ValueError, TypeError):
+                    pass
 
         context = f"""COLONNES DISPONIBLES : {list(df.columns)}
 COLONNES NUMÉRIQUES : {numeric_cols}

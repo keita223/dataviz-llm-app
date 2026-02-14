@@ -13,6 +13,11 @@ class VizStrategistAgent:
         Génère 3 propositions de visualisations différentes
         """
 
+        # Extraire les colonnes par type
+        column_types = data_summary.get('column_types', {})
+        numeric_cols = [c for c, t in column_types.items() if 'int' in t or 'float' in t]
+        categorical_cols = [c for c, t in column_types.items() if 'object' in t or 'category' in t]
+
         prompt = f"""Tu es un expert en data visualization.
 
 CONTEXTE :
@@ -20,36 +25,48 @@ Problématique : {problem}
 
 Analyse des données :
 - Colonnes pertinentes : {data_summary.get('relevant_columns', [])}
-- Types de colonnes : {data_summary.get('column_types', {})}
+- Colonnes numériques : {numeric_cols}
+- Colonnes catégorielles : {categorical_cols}
 - Insights : {data_summary.get('insights', '')}
 - Approche recommandée : {data_summary.get('recommended_approach', '')}
 
-BONNES PRATIQUES À RESPECTER :
-- Choisir le type de graphique adapté (scatter pour corrélation, bar pour comparaison, box pour distribution, etc.)
-- Maximiser le data-ink ratio (pas de chartjunk)
-- Utiliser des couleurs appropriées et accessibles
-- Axes et légendes clairs
-- Titre explicite
-
 TÂCHE :
-Propose EXACTEMENT 3 visualisations DIFFÉRENTES qui répondent à la problématique.
-Chaque visualisation doit respecter les bonnes pratiques vues en cours.
+Propose EXACTEMENT 3 visualisations qui répondent à la problématique.
+
+RÈGLES STRICTES :
+1. Chaque proposition doit utiliser un chart_type DIFFÉRENT. Par exemple : une bar, une scatter, une pie. JAMAIS 2 fois le même type.
+2. Les variables doivent être des noms de colonnes qui EXISTENT dans les données ci-dessus.
+3. Pour les variables, utilise les colonnes catégorielles en x et numériques en y.
+4. Types autorisés : bar, scatter, pie, box, line, histogram, heatmap
 
 Réponds en JSON avec cette structure EXACTE :
 {{
     "proposals": [
         {{
-            "title": "Titre explicite de la visualisation",
-            "chart_type": "scatter|bar|box|heatmap|line|histogram",
+            "title": "Titre explicite",
+            "chart_type": "bar",
             "variables": ["colonne_x", "colonne_y"],
-            "justification": "Pourquoi cette visualisation répond à la problématique",
-            "best_practices": "Comment elle respecte les bonnes pratiques (data-ink ratio, choix du type, etc.)"
+            "justification": "Pourquoi cette visualisation",
+            "best_practices": "Bonnes pratiques respectées"
         }},
-        ... (2 autres propositions DIFFÉRENTES)
+        {{
+            "title": "Titre explicite",
+            "chart_type": "scatter",
+            "variables": ["colonne_x", "colonne_y"],
+            "justification": "Pourquoi cette visualisation",
+            "best_practices": "Bonnes pratiques respectées"
+        }},
+        {{
+            "title": "Titre explicite",
+            "chart_type": "pie",
+            "variables": ["colonne_x", "colonne_y"],
+            "justification": "Pourquoi cette visualisation",
+            "best_practices": "Bonnes pratiques respectées"
+        }}
     ]
 }}
 
-IMPORTANT : Réponds UNIQUEMENT avec le JSON, rien d'autre.
+IMPORTANT : Les 3 chart_type DOIVENT être différents. Réponds UNIQUEMENT avec le JSON.
 """
 
         response = self.client.messages.create(
@@ -62,15 +79,56 @@ IMPORTANT : Réponds UNIQUEMENT avec le JSON, rien d'autre.
 
         try:
             result = json.loads(response_text.strip())
-            return result.get("proposals", [])
+            proposals = result.get("proposals", [])
+
+            # Vérifier que les 3 types sont différents
+            seen_types = set()
+            unique_proposals = []
+            for p in proposals:
+                chart_type = p.get('chart_type', '').lower()
+                if chart_type not in seen_types:
+                    seen_types.add(chart_type)
+                    unique_proposals.append(p)
+
+            # Si des doublons ont été retirés, compléter avec des types manquants
+            if len(unique_proposals) < 3:
+                all_types = ['bar', 'scatter', 'pie', 'box', 'histogram', 'line']
+                relevant_cols = data_summary.get('relevant_columns', [])
+                for t in all_types:
+                    if t not in seen_types and len(unique_proposals) < 3:
+                        unique_proposals.append({
+                            "title": f"Analyse par {t} chart",
+                            "chart_type": t,
+                            "variables": relevant_cols[:2],
+                            "justification": "Visualisation complémentaire",
+                            "best_practices": "Type de graphique différent pour une autre perspective"
+                        })
+                        seen_types.add(t)
+
+            return unique_proposals[:3]
+
         except json.JSONDecodeError:
-            # Fallback : propositions par défaut
+            relevant_cols = data_summary.get('relevant_columns', [])
             return [
                 {
-                    "title": "Proposition par défaut 1",
+                    "title": "Comparaison par catégorie",
+                    "chart_type": "bar",
+                    "variables": relevant_cols[:2],
+                    "justification": "Bar chart pour comparer les valeurs",
+                    "best_practices": "Comparaison visuelle claire"
+                },
+                {
+                    "title": "Corrélation entre variables",
                     "chart_type": "scatter",
-                    "variables": data_summary.get('relevant_columns', [])[:2],
-                    "justification": "Analyse de corrélation",
-                    "best_practices": "Scatter plot optimal pour voir les relations"
+                    "variables": relevant_cols[:2],
+                    "justification": "Scatter plot pour voir les relations",
+                    "best_practices": "Identification de patterns"
+                },
+                {
+                    "title": "Répartition des données",
+                    "chart_type": "pie",
+                    "variables": relevant_cols[:2],
+                    "justification": "Pie chart pour voir les proportions",
+                    "best_practices": "Vue d'ensemble des proportions"
                 }
             ]

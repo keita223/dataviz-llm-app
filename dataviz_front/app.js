@@ -179,7 +179,7 @@ async function selectProposal(index, cardEl) {
         }
 
         const data = await res.json();
-        renderVisualization(data.plotly_json);
+        renderVisualization(data.image_base64);
         renderCode(data.code);
         goToStep(3);
     } catch (err) {
@@ -189,26 +189,19 @@ async function selectProposal(index, cardEl) {
     }
 }
 
-// Render Plotly chart
-function renderVisualization(plotlyJson) {
+// Render matplotlib image
+function renderVisualization(imageBase64) {
     const chartDiv = document.getElementById('plotly-chart');
     chartDiv.innerHTML = '';
 
-    const layout = plotlyJson.layout || {};
-    layout.autosize = true;
-    layout.margin = layout.margin || { l: 80, r: 40, t: 80, b: 100 };
-    layout.font = layout.font || {};
-    layout.font.size = layout.font.size || 13;
-    layout.font.family = layout.font.family || 'Segoe UI, system-ui, sans-serif';
-    layout.template = layout.template || 'plotly_white';
-    layout.height = layout.height || 500;
-
-    Plotly.newPlot(chartDiv, plotlyJson.data, layout, {
-        responsive: true,
-        displayModeBar: true,
-        displaylogo: false,
-        modeBarButtonsToRemove: ['lasso2d', 'select2d']
-    });
+    const img = document.createElement('img');
+    img.src = 'data:image/png;base64,' + imageBase64;
+    img.alt = 'Visualisation générée';
+    img.style.width = '100%';
+    img.style.maxWidth = '900px';
+    img.style.display = 'block';
+    img.style.margin = '0 auto';
+    chartDiv.appendChild(img);
 }
 
 // Render code

@@ -1,4 +1,4 @@
-﻿fastapi
+fastapi
 uvicorn[standard]
 python-multipart
 
@@ -10,15 +10,10 @@ pandas
 scipy
 matplotlib
 seaborn
-plotly
-
-networkx
 
 scikit-learn
 
 anthropic
 
-requests
 httpx
-
 aiofiles

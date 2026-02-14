@@ -223,6 +223,11 @@ textarea:focus {
     color: white;
 }
 
+.btn-download {
+    background: linear-gradient(135deg, #059669, #047857);
+    color: white;
+}
+
 .btn-secondary {
     background: #e2e8f0;
     color: #334155;

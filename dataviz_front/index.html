@@ -90,6 +90,7 @@
 
             <div class="actions">
                 <button class="btn btn-secondary" id="btn-back-2">Retour aux propositions</button>
+                <button class="btn btn-primary" id="btn-download">Telecharger PNG</button>
                 <button class="btn btn-primary" id="btn-restart">Nouvelle analyse</button>
             </div>
         </section>
@@ -327,6 +328,16 @@
     function renderCode(code) {
         document.getElementById('generated-code').textContent = code;
     }
+
+    // Download PNG
+    document.getElementById('btn-download').addEventListener('click', () => {
+        const img = document.querySelector('#viz-chart img');
+        if (!img) return;
+        const link = document.createElement('a');
+        link.download = 'visualisation.png';
+        link.href = img.src;
+        link.click();
+    });
 
     // Back buttons
     document.getElementById('btn-back-1').addEventListener('click', () => goToStep(1));

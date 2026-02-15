@@ -124,6 +124,7 @@ pytest tests/ -v
 
 - [Mamadi Keita](https://github.com/keita223)
 - [Linda Ben Rajab](https://github.com/Lindabenrajab)
+- [Skander Afi](https://github.com/skan652)
 
 **Reviewer** : Hadrien Mariaccia - Enseignant
 
